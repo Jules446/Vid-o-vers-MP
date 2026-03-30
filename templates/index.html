@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VortexDL — Téléchargeur Vidéo HD</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07090e;
+    --surface: #0d1019;
+    --surface2: #141926;
+    --border: #1c2234;
+    --accent: #00e5ff;
+    --accent2: #7b2fff;
+    --mp3: #ff6b35;
+    --mp4: #00e5ff;
+    --text: #e8eaf2;
+    --muted: #556070;
+    --success: #00d084;
+    --error: #ff4757;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 15% -5%,rgba(123,47,255,.16) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 85% 105%,rgba(0,229,255,.1) 0%,transparent 60%);pointer-events:none;z-index:0}
+  body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px);background-size:64px 64px;pointer-events:none;z-index:0}
+  .wrap{position:relative;z-index:1;max-width:840px;margin:0 auto;padding:0 24px}
+
+  header{padding:36px 0 16px;display:flex;align-items:center;justify-content:space-between}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:1.9rem;letter-spacing:3px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .logo em{font-style:normal;-webkit-text-fill-color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.75rem;letter-spacing:1px;margin-left:6px;vertical-align:middle;font-weight:500}
+  .badge{background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;font-size:.68rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:5px 13px;border-radius:20px}
+
+  .hero{text-align:center;padding:52px 0 40px}
+  .hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.8rem,8vw,5.5rem);letter-spacing:4px;line-height:1;margin-bottom:14px}
+  .g1{color:var(--text)}
+  .g2{background:linear-gradient(135deg,var(--mp3),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .hero p{color:var(--muted);font-size:.95rem;font-weight:300;max-width:420px;margin:0 auto;line-height:1.8}
+  .platforms{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:24px 0 0}
+  .pill{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:.72rem;font-weight:500;padding:5px 13px;border-radius:20px;display:flex;align-items:center;gap:6px;transition:all .2s;cursor:default}
+  .pill:hover{border-color:var(--accent);color:var(--accent)}
+  .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:30px;margin-bottom:20px;position:relative;overflow:hidden}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent2),var(--accent),transparent);opacity:.55}
+
+  .lbl{font-size:.7rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;display:block}
+
+  /* URL */
+  .iw{display:flex;border:1px solid var(--border);border-radius:12px;background:var(--surface2);overflow:hidden;transition:border-color .2s}
+  .iw:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,229,255,.07)}
+  .iicon{display:flex;align-items:center;padding:0 15px;color:var(--muted);font-size:1rem;flex-shrink:0}
+  #urlInput{flex:1;background:transparent;border:none;outline:none;padding:15px 0;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.92rem}
+  #urlInput::placeholder{color:var(--muted)}
+  .paste-btn{background:var(--surface);border:none;border-left:1px solid var(--border);padding:0 16px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:600;letter-spacing:.5px;transition:all .2s;white-space:nowrap}
+  .paste-btn:hover{color:var(--accent);background:rgba(0,229,255,.05)}
+
+  /* Preview strip */
+  #previewStrip{display:none;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:12px;align-items:center;gap:14px}
+  #previewStrip.show{display:flex;animation:fadeUp .25s ease}
+  #prevThumb{width:56px;height:56px;border-radius:8px;object-fit:cover;background:var(--surface);flex-shrink:0}
+  #prevTitle{font-size:.88rem;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #prevMeta{font-size:.72rem;color:var(--muted);margin-top:3px}
+
+  /* Format tabs */
+  .ftabs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px}
+  .ftab{background:var(--surface2);border:2px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:all .25s;position:relative;overflow:hidden;user-select:none}
+  .ftab:hover{border-color:var(--muted);transform:translateY(-1px)}
+  .ftab.mp3on{border-color:var(--mp3);background:rgba(255,107,53,.07)}
+  .ftab.mp4on{border-color:var(--mp4);background:rgba(0,229,255,.07)}
+  .ftab input{position:absolute;opacity:0;pointer-events:none}
+  .ticon{font-size:1.6rem;margin-bottom:8px;display:block}
+  .tname{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:2px;display:block;margin-bottom:3px;color:var(--muted)}
+  .ftab.mp3on .tname{color:var(--mp3)}
+  .ftab.mp4on .tname{color:var(--mp4)}
+  .tdesc{font-size:.75rem;color:var(--muted);line-height:1.5}
+  .tcheck{position:absolute;top:13px;right:13px;width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.6rem;transition:all .2s}
+  .ftab.mp3on .tcheck{border-color:var(--mp3);background:var(--mp3);color:#fff}
+  .ftab.mp4on .tcheck{border-color:var(--mp4);background:var(--mp4);color:#000}
+
+  /* Quality grids */
+  .qsec{margin-bottom:22px;display:none}
+  .qsec.show{display:block}
+  .qgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:9px}
+  .qbtn{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 6px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+  .qbtn:hover{border-color:var(--muted)}
+  .qbtn.sel{border-color:var(--mp4);background:rgba(0,229,255,.09)}
+  .qbtn.sel .qlbl{color:var(--mp4)}
+  .qlbl{font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:1px;display:block;color:var(--text)}
+  .qsub{font-size:.62rem;color:var(--muted);margin-top:2px}
+  .hqbadge{position:absolute;top:-6px;right:-3px;background:linear-gradient(135deg,var(--accent2),var(--accent));color:#fff;font-size:.52rem;font-weight:700;letter-spacing:.5px;padding:2px 5px;border-radius:4px;text-transform:uppercase}
+  .agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:9px}
+  .abtn{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:13px 8px;text-align:center;cursor:pointer;transition:all .2s}
+  .abtn:hover{border-color:var(--muted)}
+  .abtn.sel{border-color:var(--mp3);background:rgba(255,107,53,.09)}
+  .abtn.sel .albl{color:var(--mp3)}
+  .albl{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:1px;display:block}
+  .asub{font-size:.63rem;color:var(--muted);margin-top:2px}
+
+  /* Download button */
+  #dlBtn{width:100%;padding:17px;border:none;border-radius:12px;font-family:'Bebas Neue',sans-serif;font-size:1.25rem;letter-spacing:3px;cursor:pointer;position:relative;overflow:hidden;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:10px}
+  #dlBtn.mp3m{background:linear-gradient(135deg,#ff6b35,#e63900);color:#fff;box-shadow:0 4px 22px rgba(255,107,53,.28)}
+  #dlBtn.mp4m{background:linear-gradient(135deg,#00b4cc,#00e5ff);color:#000;box-shadow:0 4px 22px rgba(0,229,255,.22)}
+  #dlBtn:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.1)}
+  #dlBtn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  #dlBtn::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.15) 50%,transparent 100%);transform:translateX(-100%);transition:transform .5s}
+  #dlBtn:hover:not(:disabled)::after{transform:translateX(100%)}
+
+  /* Progress */
+  #prog{display:none;margin-top:18px}
+  #prog.show{display:block}
+  .pbar-wrap{background:var(--surface2);border-radius:100px;height:6px;overflow:hidden;margin:10px 0}
+  #pbar{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--accent2),var(--accent));width:0%;transition:width .3s ease;position:relative}
+  #pbar::after{content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .pinfo{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted)}
+  #pstatus{color:var(--accent)}
+
+  /* Result */
+  #result{display:none;background:var(--surface2);border:1px solid var(--success);border-radius:14px;padding:20px;margin-top:16px;align-items:center;gap:16px}
+  #result.show{display:flex;animation:fadeUp .3s ease}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  #rthumb{width:64px;height:64px;border-radius:10px;object-fit:cover;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0;overflow:hidden}
+  #rthumb img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+  .rinfo{flex:1;min-width:0}
+  #rtitle{font-size:.88rem;font-weight:600;color:var(--text);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rmeta{font-size:.72rem;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+  #rdlbtn{background:var(--success);color:#000;border:none;border-radius:10px;padding:10px 20px;font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:1px;cursor:pointer;transition:all .2s;white-space:nowrap;flex-shrink:0;text-decoration:none;display:flex;align-items:center;gap:6px}
+  #rdlbtn:hover{filter:brightness(1.12);transform:scale(1.04)}
+
+  /* Error */
+  #errMsg{display:none;color:var(--error);font-size:.78rem;margin-top:9px;padding:10px 14px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:8px}
+  #errMsg.show{display:block}
+
+  /* Stats */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:28px}
+  .sbox{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;text-align:center}
+  .snum{font-family:'Bebas Neue',sans-serif;font-size:1.9rem;letter-spacing:1px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:block}
+  .slbl{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+
+  /* Info */
+  .igrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:28px}
+  .icard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px}
+  .icard h3{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;margin-bottom:10px}
+  .mt{color:var(--mp3)}.vt{color:var(--mp4)}
+  .ilist{list-style:none;display:flex;flex-direction:column;gap:7px}
+  .ilist li{font-size:.78rem;color:var(--muted);display:flex;align-items:flex-start;gap:8px;line-height:1.5}
+  .ilist li::before{content:'→';font-size:.68rem;opacity:.5;flex-shrink:0;margin-top:2px}
+
+  .notice{background:rgba(255,107,53,.07);border:1px solid rgba(255,107,53,.18);border-radius:12px;padding:15px 18px;margin-top:22px;font-size:.76rem;color:var(--muted);line-height:1.6;display:flex;gap:10px;align-items:flex-start}
+
+  footer{text-align:center;padding:44px 0 28px;color:var(--muted);font-size:.74rem}
+
+  @media(max-width:560px){.igrid{grid-template-columns:1fr}.qgrid{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:2.6rem}.card{padding:18px}.ftabs{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Vortex<em>DL</em></div>
+    <div class="badge">⚡ HD Réel</div>
+  </header>
+
+  <section class="hero">
+    <h1><span class="g1">TÉLÉCHARGE</span><br><span class="g2">N'IMPORTE QUOI</span></h1>
+    <p>MP3 jusqu'à 320 kbps · MP4 jusqu'à 4K Ultra HD.<br>Vrai téléchargement, vrais fichiers.</p>
+    <div class="platforms">
+      <div class="pill"><span class="dot" style="background:#ff0000"></span>YouTube</div>
+      <div class="pill"><span class="dot" style="background:#e1306c"></span>Instagram</div>
+      <div class="pill"><span class="dot" style="background:#000;border:1px solid #555"></span>TikTok</div>
+      <div class="pill"><span class="dot" style="background:#1da1f2"></span>Twitter/X</div>
+      <div class="pill"><span class="dot" style="background:#4267b2"></span>Facebook</div>
+      <div class="pill"><span class="dot" style="background:#6441a5"></span>Twitch</div>
+    </div>
+  </section>
+
+  <div class="card">
+    <!-- URL -->
+    <div style="margin-bottom:22px">
+      <label class="lbl">🔗 Lien de la vidéo</label>
+      <div class="iw">
+        <span class="iicon">🌐</span>
+        <input type="text" id="urlInput" class="" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" oninput="onUrlInput()">
+        <button class="paste-btn" onclick="pasteUrl()">📋 Coller</button>
+      </div>
+      <div id="previewStrip">
+        <img id="prevThumb" src="" alt="">
+        <div style="min-width:0">
+          <div id="prevTitle"></div>
+          <div id="prevMeta"></div>
+        </div>
+      </div>
+      <div id="errMsg"></div>
+    </div>
+
+    <!-- Format -->
+    <label class="lbl">📦 Format</label>
+    <div class="ftabs">
+      <div class="ftab mp3on" id="tabMp3" onclick="selFmt('mp3')">
+        <input type="radio" name="fmt" value="mp3" checked>
+        <span class="ticon">🎵</span>
+        <span class="tname">MP3</span>
+        <span class="tdesc">Audio pur, compatible partout. Idéal musique & podcasts.</span>
+        <div class="tcheck">✓</div>
+      </div>
+      <div class="ftab" id="tabMp4" onclick="selFmt('mp4')">
+        <input type="radio" name="fmt" value="mp4">
+        <span class="ticon">🎬</span>
+        <span class="tname">MP4</span>
+        <span class="tdesc">Vidéo HD complète jusqu'à 4K. Son + image.</span>
+        <div class="tcheck">✓</div>
+      </div>
+    </div>
+
+    <!-- MP3 quality -->
+    <div class="qsec show" id="audioQ">
+      <label class="lbl">🎧 Qualité audio</label>
+      <div class="agrid">
+        <div class="abtn" onclick="selA(this,'128')"><span class="albl">128</span><div class="asub">kbps · Léger</div></div>
+        <div class="abtn" onclick="selA(this,'192')"><span class="albl">192</span><div class="asub">kbps · Bon</div></div>
+        <div class="abtn sel" onclick="selA(this,'320')"><span class="albl">320</span><div class="asub">kbps · Max 🔥</div></div>
+      </div>
+    </div>
+
+    <!-- MP4 quality -->
+    <div class="qsec" id="videoQ">
+      <label class="lbl">📺 Qualité vidéo</label>
+      <div class="qgrid">
+        <div class="qbtn" onclick="selV(this,'480p')"><span class="qlbl">480p</span><div class="qsub">SD</div></div>
+        <div class="qbtn" onclick="selV(this,'720p')"><span class="qlbl">720p</span><div class="qsub">HD</div></div>
+        <div class="qbtn sel" onclick="selV(this,'1080p')"><span class="qlbl">1080p</span><div class="qsub">Full HD</div><span class="hqbadge">HQ</span></div>
+        <div class="qbtn" onclick="selV(this,'4k')"><span class="qlbl">4K</span><div class="qsub">Ultra HD</div><span class="hqbadge">MAX</span></div>
+      </div>
+    </div>
+
+    <button id="dlBtn" class="mp3m" onclick="startDl()">
+      <span id="dlIcon">⬇️</span> TÉLÉCHARGER EN <span id="dlFmt">MP3</span>
+    </button>
+
+    <!-- Progress -->
+    <div id="prog">
+      <div class="pinfo"><span id="pstatus">Démarrage...</span><span id="ppct">0%</span></div>
+      <div class="pbar-wrap"><div id="pbar"></div></div>
+      <div class="pinfo"><span id="pdetail">Connexion...</span><span id="pspeed">—</span></div>
+    </div>
+
+    <!-- Result -->
+    <div id="result">
+      <div id="rthumb">🎬</div>
+      <div class="rinfo">
+        <div id="rtitle">Titre</div>
+        <div class="rmeta">
+          <span id="rfmt">—</span>
+          <span id="rsize">—</span>
+          <span id="rdur">—</span>
+        </div>
+      </div>
+      <a id="rdlbtn" href="#" download>💾 SAUVER</a>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="sbox"><span class="snum">320</span><div class="slbl">kbps Max MP3</div></div>
+    <div class="sbox"><span class="snum">4K</span><div class="slbl">Ultra HD MP4</div></div>
+    <div class="sbox"><span class="snum">6+</span><div class="slbl">Plateformes</div></div>
+  </div>
+
+  <div class="igrid">
+    <div class="icard">
+      <h3 class="mt">🎵 MP3 Audio</h3>
+      <ul class="ilist">
+        <li>320 kbps — qualité studio</li>
+        <li>Compatible tous lecteurs</li>
+        <li>Fichier léger, idéal mobile</li>
+        <li>Métadonnées & pochette incluses</li>
+        <li>Conversion rapide via FFmpeg</li>
+      </ul>
+    </div>
+    <div class="icard">
+      <h3 class="vt">🎬 MP4 Vidéo</h3>
+      <ul class="ilist">
+        <li>4K Ultra HD · 2160p réel</li>
+        <li>1080p Full HD par défaut</li>
+        <li>Audio AAC haute qualité</li>
+        <li>Codec H.264 optimisé</li>
+        <li>Compatible TV, PC, mobile</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="notice">
+    <span>⚖️</span>
+    <div><strong style="color:var(--text)">Usage légal uniquement.</strong> Téléchargez uniquement du contenu libre de droits ou dont vous êtes l'auteur. Respectez les CGU des plateformes et le droit d'auteur en vigueur.</div>
+  </div>
+
+  <footer>
+    <p>VortexDL — Propulsé par yt-dlp & FFmpeg</p>
+    <p style="margin-top:5px">Aucune donnée stockée · Fichiers supprimés automatiquement</p>
+  </footer>
+</div>
+
+<script>
+  let fmt = 'mp3';
+  let vQual = '1080p';
+  let aQual = '320';
+  let jobId = null;
+  let pollTimer = null;
+  let infoTimer = null;
+
+  function pasteUrl() {
+    navigator.clipboard.readText().then(t => {
+      document.getElementById('urlInput').value = t;
+      onUrlInput();
+    }).catch(() => document.getElementById('urlInput').focus());
+  }
+
+  function onUrlInput() {
+    clearTimeout(infoTimer);
+    const url = document.getElementById('urlInput').value.trim();
+    if (url.length > 10) {
+      infoTimer = setTimeout(() => fetchInfo(url), 800);
+    } else {
+      document.getElementById('previewStrip').classList.remove('show');
+    }
+  }
+
+  async function fetchInfo(url) {
+    try {
+      const r = await fetch('/api/info', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({url})
+      });
+      const d = await r.json();
+      if (d.error) return;
+      const mins = Math.floor((d.duration||0)/60);
+      const secs = (d.duration||0)%60;
+      document.getElementById('prevTitle').textContent = d.title || 'Vidéo';
+      document.getElementById('prevMeta').textContent = `${mins}:${String(secs).padStart(2,'0')} · ${d.uploader||''}`;
+      const th = document.getElementById('prevThumb');
+      if (d.thumbnail) { th.src = d.thumbnail; th.style.display='block'; }
+      document.getElementById('previewStrip').classList.add('show');
+    } catch(e) {}
+  }
+
+  function selFmt(f) {
+    fmt = f;
+    if (f === 'mp3') {
+      document.getElementById('tabMp3').className = 'ftab mp3on';
+      document.getElementById('tabMp4').className = 'ftab';
+      document.getElementById('dlBtn').className = 'mp3m';
+      document.getElementById('dlFmt').textContent = 'MP3';
+      document.getElementById('audioQ').classList.add('show');
+      document.getElementById('videoQ').classList.remove('show');
+    } else {
+      document.getElementById('tabMp4').className = 'ftab mp4on';
+      document.getElementById('tabMp3').className = 'ftab';
+      document.getElementById('dlBtn').className = 'mp4m';
+      document.getElementById('dlFmt').textContent = 'MP4 HD';
+      document.getElementById('videoQ').classList.add('show');
+      document.getElementById('audioQ').classList.remove('show');
+    }
+  }
+
+  function selV(el, q) {
+    document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('sel'));
+    el.classList.add('sel'); vQual = q;
+  }
+
+  function selA(el, q) {
+    document.querySelectorAll('.abtn').forEach(b=>b.classList.remove('sel'));
+    el.classList.add('sel'); aQual = q;
+  }
+
+  async function startDl() {
+    const url = document.getElementById('urlInput').value.trim();
+    const err = document.getElementById('errMsg');
+    if (!url) { showErr('⚠️ Colle une URL de vidéo'); return; }
+
+    err.classList.remove('show');
+    document.getElementById('dlBtn').disabled = true;
+    document.getElementById('result').classList.remove('show');
+    document.getElementById('prog').classList.add('show');
+    setProgress(0, 'Envoi de la requête...', '—', '');
+
+    try {
+      const quality = fmt === 'mp3' ? aQual : vQual;
+      const r = await fetch('/api/download', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({url, format: fmt, quality})
+      });
+      const d = await r.json();
+      if (d.error) { showErr('❌ ' + d.error); resetBtn(); return; }
+      jobId = d.job_id;
+      pollTimer = setInterval(pollProgress, 700);
+    } catch(e) {
+      showErr('❌ Impossible de joindre le serveur. Vérifiez que le backend tourne.');
+      resetBtn();
+    }
+  }
+
+  async function pollProgress() {
+    if (!jobId) return;
+    try {
+      const r = await fetch('/api/progress/' + jobId);
+      const d = await r.json();
+      const detail = fmt === 'mp4' ? `Traitement ${vQual}...` : `Encodage MP3 ${aQual} kbps...`;
+
+      if (d.status === 'downloading') {
+        setProgress(d.percent, 'Téléchargement en cours...', d.speed||'—', detail);
+      } else if (d.status === 'processing') {
+        setProgress(95, 'Conversion...', '—', 'FFmpeg en cours...');
+      } else if (d.status === 'done') {
+        clearInterval(pollTimer);
+        setProgress(100, '✅ Terminé !', '—', '');
+        showResult(d);
+        resetBtn();
+      } else if (d.status === 'error') {
+        clearInterval(pollTimer);
+        showErr('❌ ' + (d.message || 'Erreur inconnue'));
+        resetBtn();
+      }
+    } catch(e) {}
+  }
+
+  function setProgress(pct, status, speed, detail) {
+    document.getElementById('pbar').style.width = pct + '%';
+    document.getElementById('ppct').textContent = pct + '%';
+    document.getElementById('pstatus').textContent = status;
+    document.getElementById('pspeed').textContent = speed;
+    document.getElementById('pdetail').textContent = detail;
+  }
+
+  function showResult(d) {
+    document.getElementById('rtitle').textContent = d.title || 'Vidéo';
+    document.getElementById('rfmt').textContent = fmt === 'mp4' ? `MP4 · ${vQual} · H.264` : `MP3 · ${aQual} kbps`;
+    document.getElementById('rsize').textContent = d.size || '—';
+    document.getElementById('rdur').textContent = d.duration || '—';
+    const th = document.getElementById('rthumb');
+    if (d.thumbnail) th.innerHTML = `<img src="${d.thumbnail}" alt="">`;
+    else th.textContent = fmt === 'mp4' ? '🎬' : '🎵';
+    const dlA = document.getElementById('rdlbtn');
+    dlA.href = '/api/file/' + jobId;
+    dlA.download = (d.title || 'vortexdl') + '.' + (fmt === 'mp4' ? 'mp4' : 'mp3');
+    document.getElementById('result').classList.add('show');
+  }
+
+  function showErr(msg) {
+    const e = document.getElementById('errMsg');
+    e.textContent = msg; e.classList.add('show');
+    setTimeout(()=>e.classList.remove('show'), 5000);
+    document.getElementById('prog').classList.remove('show');
+  }
+
+  function resetBtn() {
+    document.getElementById('dlBtn').disabled = false;
+  }
+</script>
+</body>
+</html>
